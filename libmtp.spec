@@ -3,7 +3,7 @@
 
 Name:           libmtp
 Version:        1.1.6
-Release:        1%{?dist}
+Release:        3%{?dist}
 Summary:        A software library for MTP media players
 URL:            http://libmtp.sourceforge.net/
 
@@ -105,6 +105,12 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.1.6-3
+- Mass rebuild 2014-01-24
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 1.1.6-2
+- Mass rebuild 2013-12-27
+
 * Wed Oct  9 2013 Matthias Clasen <mclasen@redhat.com> - 1.1.6-1
 - Install udev rules in /usr/lib/udev
 - Disable strict aliasing
