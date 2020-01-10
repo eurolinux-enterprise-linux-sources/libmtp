@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
-AC_INIT([libmtp], [1.1.14], [libmtp-discuss@lists.sourceforge.net])
+AC_INIT([libmtp], [1.1.6], [libmtp-discuss@lists.sourceforge.net])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([src/libmtp.c])
@@ -15,10 +15,10 @@ AC_PROG_LIBTOOL
 AM_ICONV
 
 # Optionally set install location of udev
-UDEV=/usr/lib/udev
+UDEV=/lib/udev
 AC_ARG_WITH(udev,
     AC_HELP_STRING([--with-udev=DIR],
-    [directory where udev is installed [default=/usr/lib/udev]]),
+    [directory where udev is installed [default=/lib/udev]]),
     [UDEV="${withval}"], [])
 AC_SUBST(UDEV)
 
@@ -54,16 +54,14 @@ AC_SUBST(UDEV_MODE)
 
 # Optionally enable and check for doxygen
 AC_ARG_ENABLE([doxygen],
-    AS_HELP_STRING([--enable-doxygen], [Build API documentation using Doxygen [default=auto]]),
+    AS_HELP_STRING([--enable-doxygen], [Build API documentation using Doxygen [default=no]]),
     [ac_enable_doxygen=$enableval], [ac_enable_doxygen=auto])
-if test "x$ac_enable_doxygen" != "xno"; then
+if test "x$ac_enable_doxygen" == "xyes"; then
     AC_CHECK_PROG(HAVE_DOXYGEN, doxygen, true, false)
     if test "x$HAVE_DOXYGEN" = "xfalse" -a "x$ac_enable_doxygen" = "xyes"; then
         AC_MSG_ERROR([*** API documentation explicitly requested but Doxygen not found])
     fi
-    if test "x$HAVE_DOXYGEN" = "xtrue"; then
-        AC_MSG_NOTICE([API documentation will be generated using Doxygen])
-    fi
+    AC_MSG_NOTICE([API documentation will be generated using Doxygen])
 else
     HAVE_DOXYGEN=false
     AC_MSG_NOTICE([API documentation will not be generated])
@@ -114,7 +112,7 @@ AM_CONDITIONAL(MS_LIB_EXE, test x$ms_lib_exe = xyes)
 
 # Check for libusb-1.0
 PKG_CHECK_MODULES(LIBUSB, libusb-1.0 >= 1.0.0,[
-   LIBUSB_VER=`$PKG_CONFIG --modversion libusb-1.0`
+   LIBUSB_VER=`pkg-config --modversion libusb-1.0`
    LIBUSB_REQUIRES='libusb-1.0'
    AC_DEFINE(HAVE_LIBUSB1, [], [Have libusb 1.0])
    found_libusb1_pkg=yes
@@ -125,7 +123,7 @@ PKG_CHECK_MODULES(LIBUSB, libusb-1.0 >= 1.0.0,[
         LIBUSB_VER=1.0
    ],[
       PKG_CHECK_MODULES(LIBUSB, libusb >= 0.1.8, [
-         LIBUSB_VER=`$PKG_CONFIG --modversion libusb`
+         LIBUSB_VER=`pkg-config --modversion libusb`
          LIBUSB_REQUIRES='libusb'
          AC_DEFINE(HAVE_LIBUSB0, [], [Have libusb 0.x])
          found_libusb0_pkg=yes
@@ -188,6 +186,7 @@ AC_TYPE_SIZE_T
 AC_STRUCT_ST_BLKSIZE
 
 # Checks for library functions.
+AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_STAT
 AC_CHECK_FUNCS(basename memset select strdup strerror strndup strrchr strtoul usleep mkstemp)

@@ -2,7 +2,7 @@
  * \file libmtp.h
  * Interface to the Media Transfer Protocol library.
  *
- * Copyright (C) 2005-2013 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2005-2012 Linus Walleij <triad@df.lth.se>
  * Copyright (C) 2005-2008 Richard A. Low <richard@wentnet.com>
  * Copyright (C) 2007 Ted Bullock <tbullock@canada.com>
  * Copyright (C) 2008 Florent Mertens <flomertens@gmail.com>
@@ -29,8 +29,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 1.1.14
-#define LIBMTP_VERSION_STRING "1.1.14"
+#define LIBMTP_VERSION 1.1.6
+#define LIBMTP_VERSION_STRING "1.1.6"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -50,8 +50,6 @@ typedef unsigned __int16 uint16_t;
 typedef __int32 int32_t;
 typedef unsigned __int32 uint32_t;
 typedef unsigned __int64 uint64_t;
-#else
-#include <sys/time.h>
 #endif
 
 #include <stdio.h>
@@ -403,30 +401,6 @@ typedef enum {
   LIBMTP_DATATYPE_INT64,
   LIBMTP_DATATYPE_UINT64,
 } LIBMTP_datatype_t;
-
-/**
- * These are device capabilities
- */
-typedef enum {
-  /**
-   * This capability tells whether you can call the funcion getting
-   * partial objects, @see LIBMTP_GetPartialObject()
-   */
-  LIBMTP_DEVICECAP_GetPartialObject,
-  /**
-   * This capability tells whether you can call the function sending
-   * partial objects. @see LIBMTP_SendPartialObject()
-   */
-  LIBMTP_DEVICECAP_SendPartialObject,
-  /**
-   * This capability tells whether you can call the functions editing
-   * objects in-place on a device.
-   * @see LIBMTP_BeginEditObject()
-   * @see LIBMTP_EndEditObject()
-   * @see LIBMTP_TruncateObject()
-   */
-  LIBMTP_DEVICECAP_EditObjects,
-} LIBMTP_devicecap_t;
 
 /**
  * These are the numbered error codes. You can also
@@ -851,7 +825,6 @@ int LIBMTP_Get_Batterylevel(LIBMTP_mtpdevice_t *,
 int LIBMTP_Get_Secure_Time(LIBMTP_mtpdevice_t *, char ** const);
 int LIBMTP_Get_Device_Certificate(LIBMTP_mtpdevice_t *, char ** const);
 int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *, uint16_t ** const, uint16_t * const);
-int LIBMTP_Check_Capability(LIBMTP_mtpdevice_t *, LIBMTP_devicecap_t);
 LIBMTP_error_t *LIBMTP_Get_Errorstack(LIBMTP_mtpdevice_t*);
 void LIBMTP_Clear_Errorstack(LIBMTP_mtpdevice_t*);
 void LIBMTP_Dump_Errorstack(LIBMTP_mtpdevice_t*);
@@ -902,9 +875,6 @@ char const * LIBMTP_Get_Filetype_Description(LIBMTP_filetype_t);
 LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *);
 LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *,
       LIBMTP_progressfunc_t const, void const * const);
-
-#define LIBMTP_FILES_AND_FOLDERS_ROOT 0xffffffff
-
 LIBMTP_file_t * LIBMTP_Get_Files_And_Folders(LIBMTP_mtpdevice_t *,
 					     uint32_t const,
 					     uint32_t const);
@@ -1053,17 +1023,7 @@ int LIBMTP_TruncateObject(LIBMTP_mtpdevice_t *, uint32_t const, uint64_t);
  * @defgroup files The events API.
  * @{
  */
-typedef void(* LIBMTP_event_cb_fn) (int, LIBMTP_event_t, uint32_t, void *);
 int LIBMTP_Read_Event(LIBMTP_mtpdevice_t *, LIBMTP_event_t *, uint32_t *);
-int LIBMTP_Read_Event_Async(LIBMTP_mtpdevice_t *, LIBMTP_event_cb_fn, void *);
-int LIBMTP_Handle_Events_Timeout_Completed(struct timeval *, int *);
-
-/**
- * @}
- * @defgroup custom Custom operations API.
- * @{
- */
-int LIBMTP_Custom_Operation(LIBMTP_mtpdevice_t *, uint16_t, int, ...);
 
 /** @} */
 

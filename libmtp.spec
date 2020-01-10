@@ -2,21 +2,19 @@
 # RPM repository.
 
 Name:           libmtp
-Version:        1.1.14
+Version:        1.1.6
 Release:        1%{?dist}
 Summary:        A software library for MTP media players
 URL:            http://libmtp.sourceforge.net/
 
 Group:          System Environment/Libraries
-Source0:        https://download.sourceforge.net/%{name}/%{name}-%{version}.tar.gz
+Source0:        http://download.sourceforge.net/%{name}/%{name}-%{version}.tar.gz
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 License:        LGPLv2+
 Requires:       udev
-BuildRequires:  libusbx-devel
+BuildRequires:  libusb1-devel
 BuildRequires:  doxygen
-BuildRequires:  libgcrypt-devel
-BuildRequires:  chrpath
-
-Patch0:         0001-doc-Don-t-document-internal-endian-macros.patch
+Obsoletes:	libmtp-hal
 
 %description
 This package provides a software library for communicating with MTP
@@ -26,7 +24,7 @@ players etc.
 %package examples
 Summary:        Example programs for libmtp
 Group:          Applications/Multimedia
-Requires:       %{name}%{?_isa} = %{version}-%{release}
+Requires:       %{name} = %{version}-%{release}
 
 %description examples
 This package provides example programs for communicating with MTP
@@ -35,10 +33,9 @@ devices.
 %package devel
 Summary:        Development files for libmtp
 Group:          System Environment/Libraries
-Requires:       %{name}%{?_isa} = %{version}-%{release}
+Requires:       %{name} = %{version}-%{release}
 Requires:       pkgconfig
 Requires:       libusb1-devel
-Requires:       libgcrypt-devel
 
 %description devel
 This package provides development files for the libmtp
@@ -46,15 +43,18 @@ library for MTP media players.
 
 %prep
 %setup -q
-%patch0 -p1
 
 %build
+export CFLAGS=-fno-strict-aliasing
 %configure --disable-static \
-           --with-udev-rules=69-libmtp.rules
-%make_build
+	   --disable-mtpz \
+	   --with-udev=/usr/lib/udev \
+	   --with-udev-rules=69-libmtp.rules
+make %{?_smp_mflags}
 
 %install
-%make_install
+rm -rf $RPM_BUILD_ROOT
+make DESTDIR=$RPM_BUILD_ROOT install
 # Remove libtool archive remnant
 rm -f $RPM_BUILD_ROOT%{_libdir}/libmtp.la
 # Replace links with relative links
@@ -89,7 +89,6 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root,root,-)
 %{_libdir}/libmtp.so.9*
 /usr/lib/udev/rules.d/*
-/usr/lib/udev/hwdb.d/*
 /usr/lib/udev/mtp-probe
 
 %files examples
@@ -106,32 +105,6 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Mon Oct 09 2017 Bastien Nocera <bnocera@redhat.com> - 1.1.14-1
-- Update to 1.1.14
-Resolves: #1356288
-
-* Mon Oct 09 2017 Bastien Nocera <bnocera@redhat.com> - 1.1.13-2
-- Fix multilib conflict with internal header
-Resolves: #1356288
-
-* Fri Oct 06 2017 Bastien Nocera <bnocera@redhat.com> - 1.1.13-1
-- Rebase to libmtp 1.1.13
-Resolves: #1356288
-
-* Mon May 23 2016 Bastien Nocera <bnocera@redhat.com> - 1.1.6-5
-- Fix memory leak
-Resolves: #1040011
-
-* Wed May 18 2016 Bastien Nocera <bnocera@redhat.com> - 1.1.6-4
-- Fix kernel hang when using libmtp
-Resolves: #1049969
-
-* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.1.6-3
-- Mass rebuild 2014-01-24
-
-* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 1.1.6-2
-- Mass rebuild 2013-12-27
-
 * Wed Oct  9 2013 Matthias Clasen <mclasen@redhat.com> - 1.1.6-1
 - Install udev rules in /usr/lib/udev
 - Disable strict aliasing

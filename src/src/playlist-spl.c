@@ -615,7 +615,6 @@ static void spl_text_t_from_tracks(text_t** p,
     if(f != NULL) {
       append_text_t(&c, f);
       LIBMTP_PLST_DEBUG("track %d = %s (%u)\n", i+1, f, tracks[i]);
-      free(f);
     }
     else
       LIBMTP_ERROR("failed to find filepath for track=%d\n", tracks[i]);

@@ -186,7 +186,6 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
 {
   char *filename, *parent;
   char artist[80], albumartist[80], title[80], genre[80], album[80], composer[80];
-  char *to_path_copy = NULL;
   char num[80];
   uint64_t filesize;
   uint32_t parent_id = 0;
@@ -197,37 +196,30 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
 
   printf("Sending track %s to %s\n", from_path, to_path);
 
-  to_path_copy = strdup(to_path);
-  parent = dirname(to_path_copy);
+  trackmeta = LIBMTP_new_track_t();
+  albuminfo = LIBMTP_new_album_t();
+
+  parent = dirname(strdup(to_path));
+  filename = basename(strdup(to_path));
   parent_id = parse_path (parent,files,folders);
   if (parent_id == -1) {
-    free (to_path_copy);
     printf("Parent folder could not be found, skipping\n");
     return 1;
   }
-  strcpy (to_path_copy,to_path);
-  filename = basename(to_path_copy);
 
   if (stat(from_path, &sb) == -1) {
     fprintf(stderr, "%s: ", from_path);
     perror("stat");
-    free (to_path_copy);
     return 1;
   }
 
-  if (!S_ISREG(sb.st_mode)) {
-    free (to_path_copy);
+  if (!S_ISREG(sb.st_mode))
     return 0;
-  }
 
   filesize = sb.st_size;
-
-  trackmeta = LIBMTP_new_track_t();
   trackmeta->filetype = find_filetype (from_path);
   if (!LIBMTP_FILETYPE_IS_TRACK(trackmeta->filetype)) {
     printf("Not a valid track codec: \"%s\"\n", LIBMTP_Get_Filetype_Description(trackmeta->filetype));
-    LIBMTP_destroy_track_t(trackmeta);
-    free (to_path_copy);
     return 1;
   }
 
@@ -291,9 +283,6 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
     printf("Title:     %s\n", ptitle);
     trackmeta->title = strdup(ptitle);
   }
-
-  albuminfo = LIBMTP_new_album_t();
-
   if (palbum) {
     printf("Album:     %s\n", palbum);
     trackmeta->album = strdup(palbum);
@@ -382,13 +371,12 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
 
   LIBMTP_destroy_album_t(albuminfo);
   LIBMTP_destroy_track_t(trackmeta);
-  free (to_path_copy);
 
   return ret;
 }
 
 int sendtrack_command (int argc, char **argv) {
-  int opt, ret;
+  int opt;
   extern int optind;
   extern char *optarg;
   char *partist = NULL;
@@ -406,31 +394,24 @@ int sendtrack_command (int argc, char **argv) {
   while ( (opt = getopt(argc, argv, "qD:t:a:A:w:l:c:g:n:d:y:s:")) != -1 ) {
     switch (opt) {
     case 't':
-      free (ptitle);
       ptitle = strdup(optarg);
       break;
     case 'a':
-      free (partist);
       partist = strdup(optarg);
       break;
     case 'A':
-      free (palbumartist);
       palbumartist = strdup(optarg);
       break;
     case 'w':
-      free (pcomposer);
       pcomposer = strdup(optarg);
       break;
     case 'l':
-      free (palbum);
       palbum = strdup(optarg);
       break;
     case 'c':
-      free (pcodec);
       pcodec = strdup(optarg); // FIXME: DSM check for MP3, WAV or WMA
       break;
     case 'g':
-      free (pgenre);
       pgenre = strdup(optarg);
       break;
     case 'n':
@@ -458,18 +439,11 @@ int sendtrack_command (int argc, char **argv) {
   if ( argc != 2 ) {
     printf("You need to pass a filename and destination.\n");
     sendtrack_usage();
-    ret = 0;
-  } else {
-    checklang();
-    printf("%s,%s,%s,%s,%s,%s,%s,%s,%d%d,%d,%u,%d\n",argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer,tracknum, length, year, storageid, quiet);
-    ret = sendtrack_function(argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer, tracknum, length, year, storageid, quiet);
+    return 0;
   }
-  free (ptitle);
-  free (partist);
-  free (palbumartist);
-  free (pcomposer);
-  free (palbum);
-  free (pcodec);
-  free (pgenre);
-  return ret;
+
+  checklang();
+
+  printf("%s,%s,%s,%s,%s,%s,%s,%s,%d%d,%d,%u,%d\n",argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer,tracknum, length, year, storageid, quiet);
+  return sendtrack_function(argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer, tracknum, length, year, storageid, quiet);
 }

@@ -117,10 +117,9 @@ static char *hex_to_bytes(char *hex, size_t len)
 int mtpz_loaddata()
 {
 	char *home = getenv("HOME");
-	int ret = -1;
 	if (!home)
 	{
-		LIBMTP_ERROR("Unable to determine user's home directory, MTPZ disabled.\n");
+		LIBMTP_INFO("Unable to determine user's home directory, MTPZ disabled");
 		return -1;
 	}
 
@@ -130,66 +129,63 @@ int mtpz_loaddata()
 
 	FILE *fdata = fopen(path, "r");
 	if (!fdata)
-		return ret;
+	{
+		LIBMTP_INFO("Unable to open ~/.mtpz-data for reading, MTPZ disabled.");
+		return -1;
+	}
 
 	// Should only be six characters in length, but fgets will encounter a newline and stop.
 	MTPZ_PUBLIC_EXPONENT = (unsigned char *)fgets_strip((char *)malloc(8), 8, fdata);
 	if (!MTPZ_PUBLIC_EXPONENT)
 	{
-		LIBMTP_ERROR("Unable to read MTPZ public exponent from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to read MTPZ public exponent from ~/.mtpz-data, MTPZ disabled");
+		return -1;
 	}
 
 	// Should only be 33 characters in length, but fgets will encounter a newline and stop.
-	char *hexenckey = fgets_strip((char *)malloc(35), 35, fdata);
+	char *hexenckey = (unsigned char *)fgets_strip((char *)malloc(35), 35, fdata);
 	if (!hexenckey)
 	{
-		LIBMTP_ERROR("Unable to read MTPZ encryption key from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to read MTPZ encryption key from ~/.mtpz-data, MTPZ disabled");
+		return -1;
 	}
-
 	MTPZ_ENCRYPTION_KEY = hex_to_bytes(hexenckey, strlen(hexenckey));
 	if (!MTPZ_ENCRYPTION_KEY)
 	{
-		LIBMTP_ERROR("Unable to read MTPZ encryption key from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to read MTPZ encryption key from ~/.mtpz-data, MTPZ disabled");
 	}
 
 	// Should only be 256 characters in length, but fgets will encounter a newline and stop.
 	MTPZ_MODULUS = (unsigned char *)fgets_strip((char *)malloc(260), 260, fdata);
 	if (!MTPZ_MODULUS)
 	{
-		LIBMTP_ERROR("Unable to read MTPZ modulus from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to read MTPZ modulus from ~/.mtpz-data, MTPZ disabled");
+		return -1;
 	}
 
 	// Should only be 256 characters in length, but fgets will encounter a newline and stop.
 	MTPZ_PRIVATE_KEY = (unsigned char *)fgets_strip((char *)malloc(260), 260, fdata);
 	if (!MTPZ_PRIVATE_KEY)
 	{
-		LIBMTP_ERROR("Unable to read MTPZ private key from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to read MTPZ private key from ~/.mtpz-data, MTPZ disabled");
+		return -1;
 	}
 
 	// Should only be 1258 characters in length, but fgets will encounter the end of the file and stop.
 	char *hexcerts = fgets_strip((char *)malloc(1260), 1260, fdata);
 	if (!hexcerts)
 	{
-		LIBMTP_ERROR("Unable to read MTPZ certificates from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to read MTPZ certificates from ~/.mtpz-data, MTPZ disabled");
+		return -1;
 	}
-
 	MTPZ_CERTIFICATES = hex_to_bytes(hexcerts, strlen(hexcerts));
 	if (!MTPZ_CERTIFICATES)
 	{
-		LIBMTP_ERROR("Unable to parse MTPZ certificates from ~/.mtpz-data, MTPZ disabled.\n");
-		goto cleanup;
+		LIBMTP_INFO("Unable to parse MTPZ certificates from ~/.mtpz-data, MTPZ disabled");
+		return -1;
 	}
-	// If all done without errors, drop the fail
-	ret = 0;
-cleanup:
-	fclose(fdata);
-	return ret;
+
+	return 0;
 }
 /* MTPZ RSA */
 
@@ -242,7 +238,7 @@ unsigned int mtpz_aes_gb9[];
 #define MTPZ_ENCRYPTIONBYTE2(val) (((val) >>  8) & 0xFF)
 #define MTPZ_ENCRYPTIONBYTE3(val) (((val) >>  0) & 0xFF)
 
-#define MTPZ_SWAP(x) mtpz_bswap32(x)
+#define MTPZ_SWAP(x) __builtin_bswap32(x)
 
 void mtpz_encryption_cipher(unsigned char *data, unsigned int len, char encrypt);
 void mtpz_encryption_cipher_advanced(unsigned char *key, unsigned int key_len, unsigned char *data, unsigned int data_len, char encrypt);
@@ -254,25 +250,13 @@ void mtpz_encryption_encrypt_custom(unsigned char *data, unsigned char *seed, un
 void mtpz_encryption_encrypt_mac(unsigned char *hash, unsigned int hash_length, unsigned char *seed, unsigned int seed_len, unsigned char *out);
 
 
-static inline uint32_t mtpz_bswap32(uint32_t x)
-{
-#if defined __GNUC__ && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)) || defined(__clang__)
-	return __builtin_bswap32(x);
-#else
-	return (x >> 24) |
-	       ((x >> 8) & 0x0000ff00) |
-	       ((x << 8) & 0x00ff0000) |
-	       (x << 24);
-#endif
-}
 
 
 /* MTPZ RSA implementation */
 mtpz_rsa_t *mtpz_rsa_init(const unsigned char *str_modulus, const unsigned char *str_privkey, const unsigned char *str_pubexp)
 {
-	mtpz_rsa_t *rsa = calloc(1, sizeof(mtpz_rsa_t));
-	if (rsa == NULL)
-		return NULL;
+	mtpz_rsa_t *rsa = (mtpz_rsa_t *)malloc(sizeof(mtpz_rsa_t));
+	memset(rsa, 0, sizeof(rsa));
 
 	gcry_mpi_t mpi_modulus, mpi_privkey, mpi_pubexp;
 
@@ -690,22 +674,21 @@ void mtpz_encryption_expand_key_inner(unsigned char *constant, int key_len, unsi
 
 	switch (key_len)
 	{
-	case 16:
-		ks = 16 * (10 + 1);
-		break;
+		case 16:
+			ks = 16 * (10 + 1);
+			break;
 
-	case 24:
-		ks = 16 * (12 + 1);
-		break;
+		case 24:
+			ks = 16 * (12 + 1);
+			break;
 
-	case 32:
-		ks = 16 * (14 + 1);
-		break;
+		case 32:
+			ks = 16 * (14 + 1);
+			break;
 
-	default:
-		*out = NULL;
-		*out_len = 0;
-		return;
+		default:
+			*out = NULL;
+			*out_len = 0;
 	}
 
 	unsigned char *key = (unsigned char *)malloc(ks);
@@ -1512,133 +1495,134 @@ ptp_mtpz_validatehandshakeresponse (PTPParams* params, unsigned char *random, un
 	unsigned char* response = NULL;
 
 	ret = ptp_mtpz_getwmdrmpdappresponse (params, &response, &len);
-	if (ret != PTP_RC_OK)
+	if (ret == PTP_RC_OK)
+	{
+		char *reader = (char *)response;
+		int i;
+
+		if (*(reader++) != '\x02')
+		{
+			return -1;
+		}
+
+		if (*(reader++) != '\x02')
+		{
+			return -1;
+		}
+
+		// Message is always 128 bytes.
+		reader++;
+		if (*(reader++) != '\x80')
+		{
+			return -1;
+		}
+
+		char *message = (char *)malloc(128);
+		memcpy(message, reader, 128);
+		reader += 128;
+
+		// Decrypt the hash-key-message..
+		char *msg_dec = (char *)malloc(128);
+		memset(msg_dec, 0, 128);
+
+		mtpz_rsa_t *rsa = mtpz_rsa_init(MTPZ_MODULUS, MTPZ_PRIVATE_KEY, MTPZ_PUBLIC_EXPONENT);
+		if (!rsa)
+		{
+			LIBMTP_INFO ("(MTPZ) Failure - could not instantiate RSA object.\n");
+			free(message);
+			free(msg_dec);
+			return -1;
+		}
+
+		if (mtpz_rsa_decrypt(128, (unsigned char *)message, 128, (unsigned char *)msg_dec, rsa) == 0)
+		{
+			LIBMTP_INFO ("(MTPZ) Failure - could not perform RSA decryption.\n");
+
+			free(message);
+			free(msg_dec);
+			mtpz_rsa_free(rsa);
+			return -1;
+		}
+
+		mtpz_rsa_free(rsa);
+		rsa = NULL;
+
+		char *state = mtpz_hash_init_state();
+		char *hash_key = (char *)malloc(16);
+		char *v10 = mtpz_hash_custom6A5DC(state, msg_dec + 21, 107, 20);
+
+		for (i = 0; i < 20; i++)
+			msg_dec[i + 1] ^= v10[i];
+
+		char *v11 = mtpz_hash_custom6A5DC(state, msg_dec + 1, 20, 107);
+
+		for (i = 0; i < 107; i++)
+			msg_dec[i + 21] ^= v11[i];
+
+		memcpy(hash_key, msg_dec + 112, 16);
+
+		// Encrypted message is 0x340 bytes.
+		reader += 2;
+		if (*(reader++) != '\x03' || *(reader++) != '\x40')
+		{
+			return -1;
+		}
+
+		unsigned char *act_msg = (unsigned char *)malloc(832);
+		unsigned char *act_reader = act_msg;
+		memcpy(act_msg, reader, 832);
+		reader = NULL;
+
+		mtpz_encryption_cipher_advanced((unsigned char *)hash_key, 16, act_msg, 832, 0);
+
+		act_reader++;
+		unsigned int certs_length = __builtin_bswap32(*(unsigned int *)(act_reader));
+		act_reader += 4;
+		act_reader += certs_length;
+
+		unsigned int rand_length = __builtin_bswap32(*(unsigned short *)(act_reader) << 16);
+		act_reader += 2;
+		unsigned char *rand_data = (unsigned char *)malloc(rand_length);
+		memcpy(rand_data, act_reader, rand_length);
+		if (memcmp(rand_data, random, 16) != 0)
+		{
+			free(rand_data);
+			return -1;
+		}
+		free(rand_data);
+		act_reader += rand_length;
+
+		unsigned int dev_rand_length = __builtin_bswap32(*(unsigned short *)(act_reader) << 16);
+		act_reader += 2;
+		act_reader += dev_rand_length;
+
+		act_reader++;
+
+		unsigned int sig_length = __builtin_bswap32(*(unsigned short *)(act_reader) << 16);
+		act_reader += 2;
+		act_reader += sig_length;
+
+		act_reader++;
+
+		unsigned int machash_length = __builtin_bswap32(*(unsigned short *)(act_reader) << 16);
+		act_reader += 2;
+		unsigned char *machash_data = (unsigned char *)malloc(machash_length);
+		memcpy(machash_data, act_reader, machash_length);
+		act_reader += machash_length;
+
+		*calculatedHash = machash_data;
+
+		free(message);
+		free(msg_dec);
+		free(state);
+		free(v10);
+		free(v11);
+		free(act_msg);
+	}
+	else
 	{
 		LIBMTP_INFO ("(MTPZ) Failure - did not receive device's response.\n");
-		return ret;
 	}
-
-	char *reader = (char *)response;
-	int i;
-
-	if (*(reader++) != '\x02')
-	{
-		return -1;
-	}
-
-	if (*(reader++) != '\x02')
-	{
-		return -1;
-	}
-
-	// Message is always 128 bytes.
-	reader++;
-	if (*(reader++) != '\x80')
-	{
-		return -1;
-	}
-
-	char *message = (char *)malloc(128);
-	memcpy(message, reader, 128);
-	reader += 128;
-
-	// Decrypt the hash-key-message..
-	char *msg_dec = (char *)malloc(128);
-	memset(msg_dec, 0, 128);
-
-	mtpz_rsa_t *rsa = mtpz_rsa_init(MTPZ_MODULUS, MTPZ_PRIVATE_KEY, MTPZ_PUBLIC_EXPONENT);
-	if (!rsa)
-	{
-		LIBMTP_INFO ("(MTPZ) Failure - could not instantiate RSA object.\n");
-		free(message);
-		free(msg_dec);
-		return -1;
-	}
-
-	if (mtpz_rsa_decrypt(128, (unsigned char *)message, 128, (unsigned char *)msg_dec, rsa) == 0)
-	{
-		LIBMTP_INFO ("(MTPZ) Failure - could not perform RSA decryption.\n");
-
-		free(message);
-		free(msg_dec);
-		mtpz_rsa_free(rsa);
-		return -1;
-	}
-
-	mtpz_rsa_free(rsa);
-	rsa = NULL;
-
-	char *state = mtpz_hash_init_state();
-	char *hash_key = (char *)malloc(16);
-	char *v10 = mtpz_hash_custom6A5DC(state, msg_dec + 21, 107, 20);
-
-	for (i = 0; i < 20; i++)
-		msg_dec[i + 1] ^= v10[i];
-
-	char *v11 = mtpz_hash_custom6A5DC(state, msg_dec + 1, 20, 107);
-
-	for (i = 0; i < 107; i++)
-		msg_dec[i + 21] ^= v11[i];
-
-	memcpy(hash_key, msg_dec + 112, 16);
-
-	// Encrypted message is 0x340 bytes.
-	reader += 2;
-	if (*(reader++) != '\x03' || *(reader++) != '\x40')
-	{
-		return -1;
-	}
-
-	unsigned char *act_msg = (unsigned char *)malloc(832);
-	unsigned char *act_reader = act_msg;
-	memcpy(act_msg, reader, 832);
-	reader = NULL;
-
-	mtpz_encryption_cipher_advanced((unsigned char *)hash_key, 16, act_msg, 832, 0);
-
-	act_reader++;
-	unsigned int certs_length = MTPZ_SWAP(*(unsigned int *)(act_reader));
-	act_reader += 4;
-	act_reader += certs_length;
-
-	unsigned int rand_length = MTPZ_SWAP(*(unsigned short *)(act_reader) << 16);
-	act_reader += 2;
-	unsigned char *rand_data = (unsigned char *)malloc(rand_length);
-	memcpy(rand_data, act_reader, rand_length);
-	if (memcmp(rand_data, random, 16) != 0)
-	{
-		free(rand_data);
-		return -1;
-	}
-	free(rand_data);
-	act_reader += rand_length;
-
-	unsigned int dev_rand_length = MTPZ_SWAP(*(unsigned short *)(act_reader) << 16);
-	act_reader += 2;
-	act_reader += dev_rand_length;
-
-	act_reader++;
-
-	unsigned int sig_length = MTPZ_SWAP(*(unsigned short *)(act_reader) << 16);
-	act_reader += 2;
-	act_reader += sig_length;
-
-	act_reader++;
-
-	unsigned int machash_length = MTPZ_SWAP(*(unsigned short *)(act_reader) << 16);
-	act_reader += 2;
-	unsigned char *machash_data = (unsigned char *)malloc(machash_length);
-	memcpy(machash_data, act_reader, machash_length);
-	act_reader += machash_length;
-
-	*calculatedHash = machash_data;
-
-	free(message);
-	free(msg_dec);
-	free(state);
-	free(v10);
-	free(v11);
-	free(act_msg);
 
 	return ret;
 }
@@ -1654,8 +1638,8 @@ ptp_mtpz_opensecuresyncsession (PTPParams* params, unsigned char *hash)
 	mtpz_encryption_encrypt_mac(hash, 16, (unsigned char *)(&macCount), 4, mch);
 
 	ret = ptp_mtpz_wmdrmpd_enabletrustedfilesoperations(params,
-		MTPZ_SWAP(hashparams[0]), MTPZ_SWAP(hashparams[1]),
-		MTPZ_SWAP(hashparams[2]), MTPZ_SWAP(hashparams[3]));
+		__builtin_bswap32(hashparams[0]), __builtin_bswap32(hashparams[1]),
+		__builtin_bswap32(hashparams[2]), __builtin_bswap32(hashparams[3]));
 	return ret;
 };
 

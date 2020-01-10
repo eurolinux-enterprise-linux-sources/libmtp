@@ -185,10 +185,8 @@ static int check_interface(char *sysfspath)
 
   /* Check for dirs that identify endpoints */
   ret = regcomp(&r, "^ep_[0-9a-f]+$", REG_EXTENDED | REG_NOSUB);
-  if (ret) {
-    closedir(dir);
+  if (ret)
     return -1;
-  }
 
   while ((dent = readdir(dir))) {
     struct stat st;
@@ -248,11 +246,9 @@ static int check_sysfs(char *sysfspath)
   dirbuf[len++] = '/';
 
   /* Check for dirs that identify interfaces */
-  ret = regcomp(&r, "^[0-9]+-[0-9]+(\\.[0-9])*\\:[0-9]+\\.[0-9]+$", REG_EXTENDED | REG_NOSUB);
-  if (ret) {
-    closedir(dir);
+  ret = regcomp(&r, "^[0-9]+-[0-9]+\\:[0-9]+\\.[0-9]+$", REG_EXTENDED | REG_NOSUB);
+  if (ret)
     return -1;
-  }
 
   while ((dent = readdir(dir))) {
     struct stat st;
