@@ -3,7 +3,7 @@
 
 Name:           libmtp
 Version:        1.1.6
-Release:        3%{?dist}
+Release:        5%{?dist}
 Summary:        A software library for MTP media players
 URL:            http://libmtp.sourceforge.net/
 
@@ -15,6 +15,10 @@ Requires:       udev
 BuildRequires:  libusb1-devel
 BuildRequires:  doxygen
 Obsoletes:	libmtp-hal
+
+Patch0:         0001-PATCH-avoid-unconditional-clear_halt.patch
+Patch1:         0001-delete-unused-clear_halt-code.patch
+Patch2:         0001-Simple-memory-leak-fix-in-playlist-spl.c.patch
 
 %description
 This package provides a software library for communicating with MTP
@@ -43,6 +47,9 @@ library for MTP media players.
 
 %prep
 %setup -q
+%patch0 -p1 -b .remove-clear_halt
+%patch1 -p1 -b .delete-clear_halt
+%patch2 -p1 -b .mem-leak
 
 %build
 export CFLAGS=-fno-strict-aliasing
@@ -105,6 +112,14 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Mon May 23 2016 Bastien Nocera <bnocera@redhat.com> - 1.1.6-5
+- Fix memory leak
+Resolves: #1040011
+
+* Wed May 18 2016 Bastien Nocera <bnocera@redhat.com> - 1.1.6-4
+- Fix kernel hang when using libmtp
+Resolves: #1049969
+
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.1.6-3
 - Mass rebuild 2014-01-24
 

@@ -1,0 +1,73 @@
+From 423e1fe71a1bec35c9d11289185aa4b06454cdb0 Mon Sep 17 00:00:00 2001
+From: Marcus Meissner <marcus@jet.franken.de>
+Date: Mon, 29 Apr 2013 00:00:48 +0200
+Subject: [PATCH] PATCH: avoid unconditional clear_halt
+
+Hi,
+
+During debugging weird "access only possible once" scenarios,
+on Raspberry Pi and also on regular Linux with USB 3.0 controllers,
+I found that clearing halt on a endpoint which is not stalled
+will confuse the (kernel) driver and device and make them really
+stall until resetted.
+
+This is probably a Kernel bug.
+
+So do not do a unconditional clear_halt.
+
+I am leaving the conditional clear_stall in, as it queries the
+status before.
+
+This might need testing.
+
+Ciao, Marcus
+
+Signed-off-by: Marcus Meissner <marcus@jet.franken.de>
+Signed-off-by: Linus Walleij <triad@df.lth.se>
+---
+ src/libusb-glue.c  | 3 +++
+ src/libusb1-glue.c | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/src/libusb-glue.c b/src/libusb-glue.c
+index f9d3a26..ae18c27 100644
+--- a/src/libusb-glue.c
++++ b/src/libusb-glue.c
+@@ -1818,11 +1818,14 @@ static void close_usb(PTP_USB* ptp_usb)
+      * STALL is persistant or not).
+      */
+     clear_stall(ptp_usb);
++#if 0
++    // causes troubles due to a kernel bug in 3.x kernels before/around 3.8
+     // Clear halts on any endpoints
+     clear_halt(ptp_usb);
+     // Added to clear some stuff on the OUT endpoint
+     // TODO: is this good on the Mac too?
+     // HINT: some devices may need that you comment these two out too.
++#endif
+     usb_resetep(ptp_usb->handle, ptp_usb->outep);
+     usb_release_interface(ptp_usb->handle, (int) ptp_usb->interface);
+   }
+diff --git a/src/libusb1-glue.c b/src/libusb1-glue.c
+index 404d684..7dee45f 100644
+--- a/src/libusb1-glue.c
++++ b/src/libusb1-glue.c
+@@ -1860,12 +1860,15 @@ static void close_usb(PTP_USB* ptp_usb)
+      * STALL is persistant or not).
+      */
+     clear_stall(ptp_usb);
++#if 0
++    // causes hangs on Linux 3.x at least up to 3.8
+     // Clear halts on any endpoints
+     clear_halt(ptp_usb);
+     // Added to clear some stuff on the OUT endpoint
+     // TODO: is this good on the Mac too?
+     // HINT: some devices may need that you comment these two out too.
+     libusb_clear_halt(ptp_usb->handle, ptp_usb->outep);
++#endif
+     libusb_release_interface(ptp_usb->handle, (int) ptp_usb->interface);
+   }
+   if (FLAG_FORCE_RESET_ON_CLOSE(ptp_usb)) {
+-- 
+2.7.4
+
